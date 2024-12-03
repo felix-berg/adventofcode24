@@ -66,10 +66,29 @@ bool isSafe(Report const& rep) {
   return isDecrOrIncr(rep) && hasLowLevelDiff(rep);
 }
 
+Report reportWithout(Report const& rep, int idx) {
+  auto cpy = rep;
+  cpy.erase(cpy.begin() + idx);
+  return cpy;
+}
+
+bool safeWithRemovingThing(Report const& rep) {
+  if (isSafe(rep))
+    return true;
+
+  for (int i = 0; i < rep.size(); ++i) {
+    if (isSafe(reportWithout(rep, i))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 int main(int argc, char** argv)
 {
   auto [ reports ] = readInput();
-  std::println("{}", sr::count_if(reports, isSafe));
+  std::println("{}", sr::count_if(reports, safeWithRemovingThing));
 
   return 0;
 }
