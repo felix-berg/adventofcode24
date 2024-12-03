@@ -1,0 +1,3 @@
+/Users/felix/dev/personal/adventofcode/day2/build/CMakeFiles/template.dir
+/Users/felix/dev/personal/adventofcode/day2/build/CMakeFiles/edit_cache.dir
+/Users/felix/dev/personal/adventofcode/day2/build/CMakeFiles/rebuild_cache.dir

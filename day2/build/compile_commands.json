@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/Users/felix/dev/personal/adventofcode/day2/build",
+  "command": "/usr/bin/clang++  -I/Users/felix/dev/personal/adventofcode/day2/include  -stdlib=libc++ -std=gnu++2b -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.1.sdk -o CMakeFiles/template.dir/main.cpp.o -c /Users/felix/dev/personal/adventofcode/day2/main.cpp",
+  "file": "/Users/felix/dev/personal/adventofcode/day2/main.cpp",
+  "output": "CMakeFiles/template.dir/main.cpp.o"
+}
+]
