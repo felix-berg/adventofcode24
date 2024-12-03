@@ -1,1 +1,5 @@
-/build/
+build/
+target/
+.bsp/
+.metals/
+.bloop/
