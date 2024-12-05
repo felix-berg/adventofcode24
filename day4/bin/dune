@@ -1,0 +1,5 @@
+(executable
+ (public_name template)
+ (name main)
+ (libraries template)
+ (flags (:standard -warn-error -A)))
