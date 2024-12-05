@@ -69,6 +69,16 @@ let all_indices rows cols: indices Seq.t =
   [ diagonals_indeces rows cols; hor_vert_indices rows cols ] 
     |> List.to_seq |> Seq.concat
 
+let x_seqs_around i j: indices Seq.t =
+  [
+    (* \ *)
+    [ (i - 1, j - 1); (i, j); (i + 1, j + 1) ]; 
+    [ (i + 1, j + 1); (i, j); (i - 1, j - 1) ]; 
+    (* / *)
+    [ (i - 1, j + 1); (i, j); (i + 1, j - 1) ];
+    [ (i + 1, j - 1); (i, j); (i - 1, j + 1) ];
+  ] |> List.to_seq |> Seq.map (List.to_seq)
+
 let get_string grid ids: string = 
   ids |> Seq.map (fun (i, j) -> grid.(i).(j))
       |> String.of_seq
@@ -93,25 +103,47 @@ let count_occurances ~sub str =
   in
   cnt_occ (str |> String.to_seq |> List.of_seq)
   
+let part_one ({ grid; rows; cols }: input) = 
+  let strings = all_indices rows cols |> Seq.map (get_string grid) in 
+  let sum seq = Seq.fold_left (fun acc v -> acc + v) 0 seq 
+  and rev_str str = 
+    let n = String.length str in
+    String.init n (fun i -> str.[n - i - 1])
+  in
+  let result = 
+    strings |> Seq.flat_map (fun str -> [ str ; rev_str str ] |> List.to_seq)
+            |> Seq.map (count_occurances ~sub:"XMAS")
+            |> sum
+  in
+  Printf.printf "Total number of occurances: %d\n" result
+
+let all_x_seq_groups rows cols: indices Seq.t Seq.t =
+  let inner_rows = rows - 2
+  and inner_cols = cols - 2
+  in
+  let origins = Seq.product 
+    (Seq.init inner_rows (fun i -> 1 + i))
+    (Seq.init inner_cols (fun j -> 1 + j)) in
+  origins 
+    |> Seq.map (fun (i, j) -> (x_seqs_around i j))
+
+let count_mas_occurances strings =
+  strings |> Seq.filter (fun str -> str = "MAS")
+          |> Seq.fold_left (fun acc _ -> acc + 1) 0
+
+let part_two ({ grid; rows; cols }: input) = 
+  all_x_seq_groups rows cols 
+    |> Seq.map(fun xseq -> 
+      xseq |> Seq.map (get_string grid)
+           |> count_mas_occurances
+    ) 
+    |> Seq.filter (fun cnt -> cnt >= 2)
+    |> Seq.fold_left (fun acc _ -> acc + 1) 0
+    |> (Printf.printf "Total number of X-MAS things: %d\n")
+
 let () = match read_input () with
-  | Some { grid; rows; cols } ->
-    let strings = 
-      all_indices rows cols
-        |> Seq.map (fun ids -> 
-          ids |> Seq.map (fun (i, j) -> grid.(i).(j))
-              |> String.of_seq
-        ) 
-    in 
-    let sum seq = Seq.fold_left (fun acc v -> acc + v) 0 seq 
-    and rev_str str = 
-      str |> String.to_seq |> List.of_seq 
-          |> List.rev |> List.to_seq |> String.of_seq
-    in
-    let result = 
-      strings |> Seq.flat_map (fun str -> [ str ; rev_str str ] |> List.to_seq)
-              |> Seq.map (count_occurances ~sub:"XMAS")
-              |> sum
-    in
-    Printf.printf "Total number of occurances: %d\n" result
+  | Some input -> 
+    part_one input;
+    part_two input
   | None -> print_endline "invalid input"
 
