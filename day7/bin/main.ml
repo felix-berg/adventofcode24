@@ -1,26 +1,51 @@
-type operator = Mul | Add
+type operator = Mul | Add | Concat
 
 let opt_or_else els opt = match opt with
   | Some v -> v
   | None -> els ()
 
+let opt_flat_map (f: 'a -> 'b option) (opt: 'a option) =
+  opt |> Option.map f |> Option.join
+
+let opt_or_else_opt (els: unit -> 'a option) (opt: 'a option) : 'a option = 
+  match opt with
+    | Some v -> Some v
+    | None -> els ()
+
+let ten_to_the p = 
+  int_of_string ("1" ^ (Seq.init p (fun _ -> '0') |> String.of_seq))
+
+let unconcat v ~suffix : int option = 
+  let digits = String.length (string_of_int suffix) in
+  let tentolen = ten_to_the digits in
+  let u = v - suffix in
+  if u mod tentolen <> 0 then 
+    None 
+  else 
+    Some (u / tentolen)
+
 let compute_operators (lhs: int) (rhs: int list): operator list option =
-  let rec comp_op value xs: operator list option = match xs with 
-    | [ x ] -> if value = x then (Some []) else None
-    | x :: xss -> (
-      let opt =
-        if value mod x <> 0 then 
-          None 
-        else match comp_op (value / x) xss with 
-          | Some ops -> Some (Mul :: ops)
-          | _ -> None
-      in match opt with 
-        | Some ops -> Some ops
-        | None -> match comp_op (value - x) xss with
-          | Some ops -> Some (Add :: ops)
-          | None -> None
-    )
-    | [] -> raise Exit
+  let rec comp_op value xs: operator list option = 
+    let try_mul x xss : operator list option = 
+      if value mod x <> 0 then None
+      else 
+        comp_op (value / x) xss 
+          |> Option.map (fun ops -> Mul :: ops)
+    and try_add x xss : operator list option =
+      comp_op (value - x) xss 
+        |> Option.map (fun ops -> Add :: ops)
+    and try_concat x xss : operator list option =
+      unconcat value ~suffix:x |> opt_flat_map (
+        fun new_val -> comp_op new_val xss
+      ) |> Option.map(fun ops -> Concat :: ops)
+    in
+    match xs with 
+      | [ x ] -> if value = x then (Some []) else None
+      | x :: xss ->
+        try_mul x xss 
+          |> opt_or_else_opt (fun _ -> try_add x xss)
+          |> opt_or_else_opt (fun _ -> try_concat x xss)
+      | [] -> assert false
   in
   comp_op lhs (List.rev rhs)
 
@@ -62,14 +87,21 @@ let get_result_string y xs ops =
         | Either.Right op -> match op with
           | Mul -> "*"
           | Add -> "+"
+          | Concat -> "||"
   ) |> String.concat " ")
 
-let () = 
-  let inputs = read_input () in
+let part_two inputs = 
   let result = inputs |> List.filter_map(
     fun (y, xs) -> match compute_operators y xs with
-      | Some _ -> Some y
+      | Some ops -> 
+        print_endline (get_result_string y xs ops);
+        Some y
       | None -> None
   ) |> List.fold_left (fun acc v -> acc + v) 0 in
   Printf.printf "Result: %d\n" result;
   print_newline ()
+
+let () = 
+  let inputs = read_input () in
+  part_two inputs;
+  print_endline (string_of_int (unconcat 15002123010 ~suffix:2123010 |> opt_or_else (fun _ -> 0)))
