@@ -119,23 +119,23 @@ let rotate dir =
 let add_vecs (a: int * int) (b: int * int) = 
   (fst a + fst b, snd a + snd b)
 
-let generate_guard_seq grid m n ~init_state : (int * int) Seq.t =
+let generate_guard_seq grid m n ~init_state : step_state Seq.t =
   let (tl, br) = ((0, 0), (m, n)) in
   let safe_get i j = 
     if in_bounds (i, j) tl br then Some grid.(i).(j) else None
   in
 
-  let next (state: step_state): ((int * int) * step_state) option =
+  let next (state: step_state): (step_state * step_state) option =
     if not (in_bounds state.guard_pos tl br) then 
       None
     else 
       let (fi, fj) = add_vecs state.guard_pos state.guard_dir in
       let next_state = match safe_get fi fj with 
         | Some Wall -> 
-          (* rotate to the right, move one forward *)
+          (* rotate to the right, stay in place *)
           let nd = rotate state.guard_dir in
           Some {
-            guard_pos = add_vecs state.guard_pos nd;
+            guard_pos = state.guard_pos;
             guard_dir = nd
           }
         | _ -> Some {
@@ -144,10 +144,11 @@ let generate_guard_seq grid m n ~init_state : (int * int) Seq.t =
           guard_dir = state.guard_dir;
         } 
       in
-      next_state |> Option.map (fun new_state -> (state.guard_pos, new_state))
+      next_state |> Option.map (fun new_state -> (state, new_state))
   in
   Seq.unfold next init_state
 
+(* turn 'a Seq.t Seq.t into 'a Seq.t *)
 let flatten_seq seq = seq |> Seq.flat_map (fun x -> x)
 
 let print_grid grid = 
@@ -156,17 +157,57 @@ let print_grid grid =
     print_newline()
   )
 
-let () = 
-  let input = read_input () in
+let part_one input =
   let mark_pos (i, j) = input.grid.(i).(j) <- Visited in
   let (m, n) = get_grid_size input.grid in
   generate_guard_seq input.grid m n ~init_state:{
     guard_pos = input.guard_pos;
     guard_dir = input.guard_dir;
-  } |> Seq.iter mark_pos;
+  } |> Seq.map (fun { guard_pos; _ } -> guard_pos) |> Seq.iter mark_pos;
   let res = 
     input.grid 
     |> Array.to_seq |> Seq.map (Array.to_seq) |> flatten_seq
     |> Seq.fold_left (fun acc v -> acc + (if v = Visited then 1 else 0)) 0
   in
   Printf.printf "Number of visited cells: %d\n" res
+
+module PairMap = Map.Make(IntPair)
+module PairSet = Set.Make(IntPair)
+
+let seq_has_cycle seq = 
+  let rec visit (directions: PairSet.t PairMap.t) s = match s () with
+    | Seq.Cons ({ guard_pos; guard_dir }, rest) -> 
+      let dirs = directions |> PairMap.find_opt guard_pos 
+        |> opt_or_else (fun _ -> PairSet.empty)
+      in
+      (dirs |> PairSet.mem guard_dir) ||
+        (visit (directions |> PairMap.add guard_pos (PairSet.add guard_dir dirs)) rest)
+    | Seq.Nil -> false 
+  in
+  visit PairMap.empty seq
+
+let part_two input = 
+  let (m, n) = get_grid_size input.grid in
+  let positions = all_grid_indices m n 
+    |> Seq.filter (fun (i, j) -> match input.grid.(i).(j) with
+      | Wall | Guard _ -> false
+      | _ -> true
+    )
+    |> Seq.filter (fun (i, j) -> 
+      let orig = input.grid.(i).(j) in
+      input.grid.(i).(j) <- Wall;
+      let has_cycle = generate_guard_seq input.grid m n ~init_state:{
+        guard_pos = input.guard_pos;
+        guard_dir = input.guard_dir;
+      } |> seq_has_cycle in
+      input.grid.(i).(j) <- orig;
+      has_cycle
+    ) |> PairSet.of_seq
+  in 
+  positions |> PairSet.iter (fun (i, j) -> Printf.printf "(%d %d) " i j);
+  Printf.printf "%d positions generate a cycle\n" (PairSet.cardinal positions)
+  
+
+let () = 
+  let input = read_input () in
+  part_two input
