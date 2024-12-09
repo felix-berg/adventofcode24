@@ -54,25 +54,36 @@ let read_input () : input =
 
 let add_vecs (i1, j1) (i2, j2) = (i1 + i2, j1 + j2)
 let sub_vecs (i1, j1) (i2, j2) = (i1 - i2, j1 - j2)
+let mul_vec (i, j) k = (i * k, j * k)
 
 let in_bounds m n (i, j) =
   0 <= i && i < m && 0 <= j && j < n
 
 let seq_flatten seq = Seq.flat_map (fun x -> x) seq
 
+let nats = 
+  let gen n = Some(n, n + 1) in
+  Seq.unfold gen 0
+
 let find_antinodes m n (antennas: PairSet.t): (int * int) Seq.t = 
   let seq = PairSet.to_seq antennas in
   Seq.product seq seq 
     |> Seq.filter (fun (x, y) -> IntPair.compare x y <> 0)
     |> Seq.map (
-      fun (x, y) -> [
-        add_vecs x (sub_vecs x y);
-        add_vecs y (sub_vecs y x)
-      ] |> List.to_seq
-    ) |> seq_flatten
-    |> Seq.filter (in_bounds m n)
+      fun (x, y) ->
+        let dp = sub_vecs x y
+        and dn = sub_vecs y x in
 
-let part_one input = 
+        let ps = nats |> Seq.map (
+          fun k -> add_vecs x (mul_vec dp k)
+        ) |> Seq.take_while (in_bounds m n)
+        and ns = nats |> Seq.map (
+          fun k -> add_vecs y (mul_vec dn k)
+        ) |> Seq.take_while (in_bounds m n) in
+      [ ps; ns ] |> List.to_seq |> Seq.concat
+    ) |> seq_flatten
+
+let part_two input = 
   let { grid; m; n } = input in
   let map = get_sets grid m n in
   let antinodes = 
@@ -87,5 +98,5 @@ let part_one input =
 
 let () = 
   let input = read_input () in
-  part_one input
+  part_two input
 
